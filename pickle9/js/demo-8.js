@@ -23,7 +23,7 @@
     ,   shapes = {} 
     ;
 
-    var debug = false;
+    var debug = true;
 
     var fixtureProperties = {
         density: 0.75
@@ -56,7 +56,7 @@
                         "12" : {id: 12, x: 33.4 ,  y:20.1 , halfHeight: 1.47, halfWidth: 11 , isStatic: true, isSensor: false},//"unit3"     
                         "13" : {id: 13, x: 19,     y: 13.7, halfHeight: 1.4,  halfWidth: 2.4, isStatic:false, isSensor: true},//"waterSensr"
                         "14" : {id: 14, x: 13.15,  y: 14.7, halfHeight: 0.2,  halfWidth: 4.7, isStatic: true, isSensor: false},//"ovenDoor"  
-                        "15" : {id: 15, x: 25.32,  y: 11.47,halfHeight: 7.8,  halfWidth: 0.7, isStatic: true},//"fridgeDoor"
+                        "15" : {id: 15, x: 25.32,  y: 11.47,halfHeight: 7.8,  halfWidth: 0.7, isStatic: true, isSensor: false},//"fridgeDoor"
                         "16" : {id: 16, x: 17.1,   y: 13.4, polys:[//"bigPot" 
                                 [{x: 0.1, y: 0}, {x: 0.1, y: 1.5}, {x: 0, y: 1.5}, {x: 0, y: 0}], // left side
                                 [{x: 0.1, y: 1.3}, {x: 2, y: 1.3}, {x: 2, y: 1.5}, {x: 0.1, y: 1.5}], // base
@@ -68,7 +68,11 @@
                         "18" : {id: 18, x:0, y:0, radius: 2, isStatic: false, isSensor:false},//"blueBerry" 
                         };
 
-
+var colander  = [
+                [{x: 0.1, y: 0}, {x: 0.1, y: 1.8}, {x: 0, y: 1.8}, {x: 0, y: 0}], // left side
+                [{x: 0.1, y: 1.5}, {x: 2.2, y: 1.5}, {x: 2.2, y: 1.8}, {x: 0.1, y: 1.8}], // base
+                [{x: 2.3, y: 0}, {x: 2.3, y: 1.8}, {x: 2.2, y: 1.8}, {x: 2.2, y: 0}] // right side
+                ];
 
 
     // http://paulirish.com/2011/requestanimationframe-for-smart-animating/
@@ -145,15 +149,15 @@
             box2d.create.defaultFixture();
 
             this.surroundings.kitchen(initialState);
-            add.vegetables();
-            add.bigPot();
-            add.door1();
-            add.door2();
-            add.colander();
+            // add.vegetables();
+            // add.bigPot();
+            // add.door1();
+            // add.door2();
+            // add.colander();
             //add.pot();
             //box2d.createColander();
 
-            this.listenForContact();
+            //this.listenForContact();
             
             for (var i in initialState) {
                 world[i] = add.build(initialState[i]);
@@ -181,7 +185,8 @@
                 
                 for(i=0;i<16;i++){
                     var x=def[i].x,y=def[i].y,halfHeight=def[i].halfHeight,halfWidth=def[i].halfWidth,isStatic=def[i].isStatic,isSensor=def[i].isSensor;
-                    box2d.createBoxBody(x, y, halfHeight, halfWidth, isStatic, isSensor);                           
+                    console.log(x+", " + y+", " +halfHeight+", " +halfWidth+", " +isStatic+", " +isSensor)
+                    //box2d.createBoxBody(x, y, halfHeight, halfWidth, isStatic, isSensor);                           
                 }
             }
         },
@@ -219,120 +224,123 @@
      
      
     var add = {
-        build: function(def) {
-            if (def.radius) {
-            return new Circle(def.id, def.x, def.y, NULL_CENTER, def.radius);
-            } else if (def.polys) {
-            return new Poly(def.id, def.x, def.y, NULL_CENTER, def.polys);
+        build: function(options) {
+            if (options.radius) {
+                var shape = new Circle(options);
+                shapes[shape.id] = shape;
+                box2d.addToWorld(shape); //return new Circle(options.id, options.x, options.y, NULL_CENTER, options.radius);
+            } else if (options.polys) {
+                box2d.createBoxBody(options);
             } else {
-            return new Box(def.id, def.x, def.y, NULL_CENTER, def.halfWidth, def.halfHeight);
+                box2d.createBoxBody(options);
+                //return body; //return new Box(options.id, options.x, options.y, NULL_CENTER, options.halfWidth, options.halfHeight);
             }
-        },
-        backgnd: function(){
-            var shape = new Background();
-            shapes[shape.id] = shape;
-            box2d.addToWorld(shape); 
-        },
-        circle: function(options) {
-            options.radius = options.radius||0.5 + Math.random()*1;//adds radius to the prototype
-            var shape = new Circle(options);
-            shapes[shape.id] = shape;
-            box2d.addToWorld(shape);
-        },
+         }//,
+        // backgnd: function(){
+        //     var shape = new Background();
+        //     shapes[shape.id] = shape;
+        //     box2d.addToWorld(shape); 
+        // },
+        // circle: function(options) {
+        //     options.radius = options.radius||0.5 + Math.random()*1;//adds radius to the prototype
+        //     var shape = new Circle(options);
+        //     shapes[shape.id] = shape;
+        //     box2d.addToWorld(shape);
+        // },
 
-        box: function(options) {
-            options.width = options.width || 0.5 + Math.random()*2;//adds width to the prototype
-            options.height = options.height || 0.5 + Math.random()*2;//adds height to the prototype
-            var shape = new Box(options);
-            //shape.id=shapeId;
-            shapes[shape.id] = shape;
-            body = box2d.addToWorld(shape); //addToWorld deals with boxes and circles
-            return body;
-        },
-        bigPot: function() {
-            // pot edges have no fixtures. If the pot was dynamic the sides would move independently
-            add.box({x: 17.1, y: 13.4,height: 2.4, width:0.2, isStatic: true});// right
-            add.box({x: 19, y: 14.5,height: 0.2, width:3.6, isStatic: true});//bottom
-            add.box({x: 20.9, y: 13.4, height: 2.4, width:0.2, isStatic: true});//left
-            //pot could be made a kinematic body to stop it falling into the oven.
+        // box: function(options) {
+        //     options.width = options.width || 0.5 + Math.random()*2;//adds width to the prototype
+        //     options.height = options.height || 0.5 + Math.random()*2;//adds height to the prototype
+        //     var shape = new Box(options);
+        //     //shape.id=shapeId;
+        //     shapes[shape.id] = shape;
+        //     body = box2d.addToWorld(shape); //addToWorld deals with boxes and circles
+        //     return body;
+        // },
+        // bigPot: function() {
+        //     // pot edges have no fixtures. If the pot was dynamic the sides would move independently
+        //     add.box({x: 17.1, y: 13.4,height: 2.4, width:0.2, isStatic: true});// right
+        //     add.box({x: 19, y: 14.5,height: 0.2, width:3.6, isStatic: true});//bottom
+        //     add.box({x: 20.9, y: 13.4, height: 2.4, width:0.2, isStatic: true});//left
+        //     //pot could be made a kinematic body to stop it falling into the oven.
 
-            //Declare the bouyancy controller
-            b2BuoyancyController = Box2D.Dynamics.Controllers.b2BuoyancyController;
+        //     //Declare the bouyancy controller
+        //     b2BuoyancyController = Box2D.Dynamics.Controllers.b2BuoyancyController;
 
-            // Set up the buoyancy controller
-            buoyancyController = new b2BuoyancyController();
-            buoyancyController.normal.Set(0, -1);
-            buoyancyController.offset = -230/SCALE;
-            buoyancyController.useDensity = true;
-            buoyancyController.density = 2.0;
-            buoyancyController.linearDrag = 5;
-            buoyancyController.angularDrag = 2;
-            // Add the controller to the world
-            world.AddController(buoyancyController);
-            //The water sensor
-            waterSensor = box2d.createBoxBody(19, 13.7, 3.6, 1.4, b2Body.b2_staticBody, true);
-            //water sensor and pot edges should be fixed to one body not separate bodies and made dynamic and super dense.
-        },
+        //     // Set up the buoyancy controller
+        //     buoyancyController = new b2BuoyancyController();
+        //     buoyancyController.normal.Set(0, -1);
+        //     buoyancyController.offset = -230/SCALE;
+        //     buoyancyController.useDensity = true;
+        //     buoyancyController.density = 2.0;
+        //     buoyancyController.linearDrag = 5;
+        //     buoyancyController.angularDrag = 2;
+        //     // Add the controller to the world
+        //     world.AddController(buoyancyController);
+        //     //The water sensor
+        //     waterSensor = box2d.createBoxBody(19, 13.7, 3.6, 1.4, b2Body.b2_staticBody, true);
+        //     //water sensor and pot edges should be fixed to one body not separate bodies and made dynamic and super dense.
+        // },
 
-        door1: function() {
-            //ovenDoor = box2d.createBoxBody(13.15, 14.7 , 4.7 , 0.2, b2Body.b2_staticBody, false,999998);
-            ovenDoor = add.box({x: 13.15, y: 14.7,height: 0.2, width:4.7, isStatic: true});
+        // door1: function() {
+        //     //ovenDoor = box2d.createBoxBody(13.15, 14.7 , 4.7 , 0.2, b2Body.b2_staticBody, false,999998);
+        //     ovenDoor = add.box({x: 13.15, y: 14.7,height: 0.2, width:4.7, isStatic: true});
 
-            //console.log(ovenDoor);
+        //     //console.log(ovenDoor);
 
-            //maybe more effective to add a shape and fixture to the base of the oven 
-            //need more effective naming convention.  
-            //activation could be the solution rather than create and destroy bodyDef.active=true.
-        },
-        door2: function() {
-            fridgeDoor = add.box({x: 25.32, y: 11.47,height: 7.8, width:0.7, isStatic: true});
-            //maybe more effective to add shapes to a fridge body and destoy and create the wall by clicking on a jquery area.
+        //     //maybe more effective to add a shape and fixture to the base of the oven 
+        //     //need more effective naming convention.  
+        //     //activation could be the solution rather than create and destroy bodyDef.active=true.
+        // },
+        // door2: function() {
+        //     fridgeDoor = add.box({x: 25.32, y: 11.47,height: 7.8, width:0.7, isStatic: true});
+        //     //maybe more effective to add shapes to a fridge body and destoy and create the wall by clicking on a jquery area.
 
-        },
-        pot: function(options) {
-            console.log('pot');
-            var shape = new Pot(options);
-            shapes[shape.id] = shape;
-            box2d.addPotToWorld(shape); //addPotToWorld creates object from verticies
-        },
-        vegetables: function(options) {
-            //create some falling objects
-            //to be replaced by a switch statement
-            options = options || {};
-            for(var i = 0; i < 25; ++i) {
-                options.isStatic = false;
-                if(Math.random() > 0.5) {
-                    options.width = Math.random()*0.2 + 0.1  //adds width to the prototype
-                    options.height = Math.random()*0.2 + 0.1
-                    var shape = new Box(options);
-                    shapes[shape.id] = shape;
-                    box2d.addToWorld(shape);
-                } else {
-                    options.radius = 7.5/SCALE;//radius
-                    var shape = new Circle(options);
-                    shapes[shape.id] = shape;
-                    box2d.addToWorld(shape);
-                }
-                options.x = Math.random() * 2+17.5;
-                options.y = Math.random() * 5-5;
-            }
-        },
-        colander:function(){
-            polys = colander;
+        // },
+        // pot: function(options) {
+        //     console.log('pot');
+        //     var shape = new Pot(options);
+        //     shapes[shape.id] = shape;
+        //     box2d.addPotToWorld(shape); //addPotToWorld creates object from verticies
+        // },
+        // vegetables: function(options) {
+        //     //create some falling objects
+        //     //to be replaced by a switch statement
+        //     options = options || {};
+        //     for(var i = 0; i < 25; ++i) {
+        //         options.isStatic = false;
+        //         if(Math.random() > 0.5) {
+        //             options.width = Math.random()*0.2 + 0.1  //adds width to the prototype
+        //             options.height = Math.random()*0.2 + 0.1
+        //             var shape = new Box(options);
+        //             shapes[shape.id] = shape;
+        //             box2d.addToWorld(shape);
+        //         } else {
+        //             options.radius = 7.5/SCALE;//radius
+        //             var shape = new Circle(options);
+        //             shapes[shape.id] = shape;
+        //             box2d.addToWorld(shape);
+        //         }
+        //         options.x = Math.random() * 2+17.5;
+        //         options.y = Math.random() * 5-5;
+        //     }
+        // },
+        // colander:function(){
+        //     polys = colander;
 
-            for (var j = 0; j < polys.length; j++) {
-                var points = polys[j];
-                var vecs = [];
-                for (var i = 0; i < points.length; i++) {
-                    var vec = new b2Vec2();
-                    vec.Set(points[i].x, points[i].y);
-                    vecs[i] = vec;
-                    //console.log(points[i].x);
-                }
-                console.log(vecs);
-                //createColander(vecs);
-            }
-        }
+        //     for (var j = 0; j < polys.length; j++) {
+        //         var points = polys[j];
+        //         var vecs = [];
+        //         for (var i = 0; i < points.length; i++) {
+        //             var vec = new b2Vec2();
+        //             vec.Set(points[i].x, points[i].y);
+        //             vecs[i] = vec;
+        //             //console.log(points[i].x);
+        //         }
+        //         console.log(vecs);
+        //         //createColander(vecs);
+        //     }
+        // }
     };
 
     var box2d = {
@@ -377,23 +385,23 @@
                 body.CreateFixture(fixDef);
             }  
         },
-        createBoxBody: function (px, py, width, height, bodyType, isSensor,id){
+        createBoxBody: function (options){//(px, py, width, height, bodyType, isSensor,id){
             var bodyDef = new b2BodyDef();
-            bodyDef.type = bodyType;
-            bodyDef.position.x = px;
-            bodyDef.position.y = py;
+            var bodyDef = this.create.bodyDef(options);
+            bodyDef.position.x = options.x;
+            bodyDef.position.y = options.y;
             //bodyDef.userData = name;
             //console.log(bodyDef.userData); //this ids the doors to be targeted for distruction
                                         //but causes errors with get UserData and shapes array definition
                                         //need to add a shape variable without drawing a canvas element
             var fixtureDef = new b2FixtureDef();
-            fixtureDef.isSensor = isSensor;
+            fixtureDef.isSensor = options.isSensor;
             fixtureDef.density = fixtureProperties.density;
             fixtureDef.friction = fixtureProperties.friction;
             fixtureDef.restitution = fixtureProperties.restitution;
            
             fixtureDef.shape = new b2PolygonShape();
-            fixtureDef.shape.SetAsBox(width/2, height/2);
+            fixtureDef.shape.SetAsBox(options.halfWidth/2, options.halfHeight/2);
             var body = world.CreateBody(bodyDef);
             var fixture = body.CreateFixture(fixtureDef);
             return body;
@@ -558,6 +566,8 @@
             this.x = options.x;
             this.y = options.y;
         };
+
+
     };
     
     var Circle = function(options) {
@@ -583,6 +593,7 @@
     };
     Circle.prototype = Shape;
     
+
     var Box = function(options) {
         Shape.call(this, options);
         this.width = options.width || Math.random()*2+0.5;
